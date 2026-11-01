@@ -52,6 +52,8 @@ public class EmailService {
             } catch (Exception e) {
                 log.error("Failed to send email via Brevo API: {}", e.getMessage());
             }
+        } else {
+            log.warn("EmailService: BREVO_API_KEY is not configured or empty. Real email cannot be dispatched. Falling back to console log.");
         }
 
         // 2. Console fallback with full professional header
@@ -110,7 +112,14 @@ public class EmailService {
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 return true;
             } else {
-                log.warn("Brevo API responded with status {}: {}", response.statusCode(), response.body());
+                log.error("Brevo API error [HTTP {}]: {}", response.statusCode(), response.body());
+                if (response.statusCode() == 401) {
+                    log.error("Brevo Error Explanation: BREVO_API_KEY is invalid. Please generate an API Key from the 'API keys & MCP' tab in Brevo (starts with xkeysib-), not from the SMTP tab!");
+                } else if (response.statusCode() == 400 && response.body() != null && response.body().contains("sender")) {
+                    log.error("Brevo Error Explanation: The sender email '{}' is not verified in Brevo under 'Senders, domains, IPs'. Set MAIL_FROM to your verified Brevo account email!", fromEmail);
+                } else if (response.statusCode() == 403) {
+                    log.error("Brevo Error Explanation: Access blocked by Brevo IP security. In Brevo Security -> Authorized IPs, click 'Deactivate for API keys' so cloud servers are not blocked.");
+                }
                 return false;
             }
         } catch (Exception e) {

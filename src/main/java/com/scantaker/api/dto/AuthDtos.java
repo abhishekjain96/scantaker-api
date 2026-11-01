@@ -19,20 +19,22 @@ public final class AuthDtos {
     public record ProfileUpdate(
         @NotBlank(message = "Name is required") @Size(max = 80) String name,
         @Email(message = "Enter a valid email") String email,
+        @Pattern(regexp = "^([6-9]\\d{9})?$", message = "Enter a valid 10 digit mobile number") String mobile,
         String city) {}
 
     public record UserView(Long id, String name, String mobile, String email, String city, String role,
-                           Long centreId, String centreName) {
+                           Long centreId, String centreName, boolean hasPasswordSet, boolean googleUser) {
         public static UserView from(User u) {
             Long cId = u.getCentre() != null ? u.getCentre().getId() : null;
             String cName = u.getCentre() != null ? u.getCentre().getName() : null;
-            return new UserView(u.getId(), u.getName(), u.getMobile(), u.getEmail(), u.getCity(), u.getRole().name(), cId, cName);
+            String displayMobile = (u.isGoogleUser() && !u.isMobileVerified()) ? null : u.getMobile();
+            return new UserView(u.getId(), u.getName(), displayMobile, u.getEmail(), u.getCity(), u.getRole().name(), cId, cName, u.isHasPasswordSet(), u.isGoogleUser());
         }
     }
 
     public record PasswordChange(
-        @NotBlank(message = "Current password is required") String current,
-        @Size(min = 6, max = 72, message = "New password must be 6 to 72 characters") String next) {}
+        String current,
+        @NotBlank(message = "New password is required") @Size(min = 6, max = 72, message = "New password must be 6 to 72 characters") String next) {}
 
     public record OtpSendRequest(
         @NotBlank(message = "Email is required") @Email(message = "Enter a valid email") String email,

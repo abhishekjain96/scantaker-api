@@ -28,6 +28,9 @@ public final class BookingDtos {
 
     public record CentreStatusUpdate(String status, String note) {}
 
+    public record CancelBookingRequest(
+        @NotBlank(message = "Cancellation reason is required") String reason) {}
+
     public record FeedbackRequest(Integer rating, String feedback) {}
 
     public record View(

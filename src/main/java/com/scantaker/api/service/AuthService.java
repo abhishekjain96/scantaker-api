@@ -131,10 +131,13 @@ public class AuthService {
             u = new User();
             u.setName(r.name() != null && !r.name().isBlank() ? r.name().trim() : "Google User");
             u.setEmail(email);
-            // Temporary generated random mobile if not available
+            // Temporary generated random mobile internally to satisfy DB not-null constraint
             u.setMobile("9" + String.format("%09d", Math.abs(RANDOM.nextLong()) % 1000000000L));
             u.setPasswordHash(encoder.encode(UUID.randomUUID().toString()));
             u.setRole(Role.USER);
+            u.setGoogleUser(true);
+            u.setHasPasswordSet(false);
+            u.setMobileVerified(false);
             users.save(u);
             notifications.notifyAdmin("New Google User Registered", u.getName() + " (" + email + ") signed up via Google.", "/admin/patients");
         }
@@ -211,6 +214,14 @@ public class AuthService {
         String email = clean(r.email());
         if (email != null && !email.equals(u.getEmail()) && users.existsByEmail(email))
             throw new ApiException(HttpStatus.CONFLICT, "This email is already registered");
+        String mobile = clean(r.mobile());
+        if (mobile != null && !mobile.isBlank()) {
+            if (!mobile.equals(u.getMobile()) && users.existsByMobile(mobile)) {
+                throw new ApiException(HttpStatus.CONFLICT, "This mobile number is already registered to another account");
+            }
+            u.setMobile(mobile);
+            u.setMobileVerified(true);
+        }
         u.setName(r.name().trim());
         u.setEmail(email);
         if (r.city() != null && !r.city().isBlank()) u.setCity(r.city().trim());
@@ -223,9 +234,12 @@ public class AuthService {
 
     public void changePassword(Long id, PasswordChange r) {
         User u = find(id);
-        if (!encoder.matches(r.current(), u.getPasswordHash()))
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Current password is wrong");
+        if (u.isHasPasswordSet()) {
+            if (r.current() == null || r.current().isBlank() || !encoder.matches(r.current(), u.getPasswordHash()))
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Current password is wrong");
+        }
         u.setPasswordHash(encoder.encode(r.next()));
+        u.setHasPasswordSet(true);
         users.save(u);
     }
 }

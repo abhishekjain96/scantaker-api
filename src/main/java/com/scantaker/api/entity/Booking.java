@@ -18,7 +18,10 @@ public class Booking {
     @ManyToOne(fetch = FetchType.LAZY)
     private User user; // guest booking ho to null
 
+    @Column(length = 2000)
     private String scanSlug;
+
+    @Column(length = 4000)
     private String scanName;
 
     @Enumerated(EnumType.STRING)
@@ -37,10 +40,10 @@ public class Booking {
     private LocalDate preferredDate;
     private String preferredTime;
 
-    @Column(length = 1000)
+    @Column(length = 2000)
     private String notes;
 
-    @Column(length = 2000)
+    @Column(length = 4000)
     private String scansList;
 
     private String stage;
@@ -53,6 +56,8 @@ public class Booking {
     private Integer quotedPrice;
     private LocalDate appointmentDate;
     private String appointmentTime;
+
+    @Column(length = 2000)
     private String cancelNote;
     private String prescriptionFile; // server pe stored naam (random)
     private String prescriptionName; // patient ki original file ka naam

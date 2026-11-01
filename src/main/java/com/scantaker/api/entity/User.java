@@ -31,5 +31,15 @@ public class User {
     private Centre centre;
 
     private String city = "Jaipur, Rajasthan";
+
+    @Column(nullable = false)
+    private boolean googleUser = false;
+
+    @Column(nullable = false)
+    private boolean hasPasswordSet = true;
+
+    @Column(nullable = false)
+    private boolean mobileVerified = true;
+
     private Instant createdAt = Instant.now();
 }

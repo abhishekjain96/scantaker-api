@@ -120,13 +120,37 @@ public class BookingService {
     public View get(String code, Long userId) { return View.from(owned(code, userId)); }
 
     @Transactional
-    public View cancel(String code, Long userId) {
+    public View cancel(String code, String reason, Long userId) {
+        if (reason == null || reason.trim().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Cancellation reason is required");
+        }
         Booking b = owned(code, userId);
-        if (b.getStatus() != BookingStatus.PENDING)
-            throw new ApiException(HttpStatus.CONFLICT, "Only pending requests can be cancelled here. Please contact us on WhatsApp.");
+        if (b.getStatus() != BookingStatus.PENDING && b.getStatus() != BookingStatus.CONFIRMED)
+            throw new ApiException(HttpStatus.CONFLICT, "This booking cannot be cancelled in its current state.");
+        
+        String cleanReason = reason.trim();
         b.setStatus(BookingStatus.CANCELLED);
         b.setStage("CANCELLED");
-        b.setCancelNote("Cancelled by user");
+        b.setCancelNote(cleanReason);
+        bookings.save(b);
+
+        // Real-time notifications
+        notifications.notifyAdmin("Booking Cancelled ⚠️",
+            "Patient " + b.getPatientName() + " (" + b.getMobile() + ") cancelled booking #" + b.getCode() + ". Reason: " + cleanReason,
+            "/admin/bookings");
+
+        if (b.getCentre() != null) {
+            notifications.notifyCentre(b.getCentre().getId(), "Booking Cancelled ⚠️",
+                "Booking #" + b.getCode() + " for " + b.getPatientName() + " was cancelled by patient. Reason: " + cleanReason,
+                "/centre/dashboard");
+        }
+
+        if (userId != null) {
+            notifications.notifyUser(userId, "Booking Cancelled ✓",
+                "Your booking #" + b.getCode() + " has been cancelled. Reason: " + cleanReason,
+                "/dashboard/bookings/" + b.getCode());
+        }
+
         return View.from(b);
     }
 
@@ -216,6 +240,12 @@ public class BookingService {
             b.setStatus(u.status());
             if (u.status() == BookingStatus.CANCELLED) {
                 if (b.getCancelNote() == null) b.setCancelNote(u.cancelNote() != null ? u.cancelNote() : "Cancelled by Scantaker team");
+                if (b.getUser() != null) {
+                    notifications.notifyUser(b.getUser().getId(), "Booking Cancelled ⚠️", "Your booking #" + b.getCode() + " has been cancelled: " + b.getCancelNote(), "/dashboard/bookings/" + b.getCode());
+                }
+                if (b.getCentre() != null) {
+                    notifications.notifyCentre(b.getCentre().getId(), "Booking Cancelled ⚠️", "Booking #" + b.getCode() + " for " + b.getPatientName() + " has been cancelled: " + b.getCancelNote(), "/centre/dashboard");
+                }
             } else {
                 b.setCancelNote(null);
             }

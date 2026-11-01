@@ -36,8 +36,9 @@ public class BookingController {
     }
 
     @PostMapping("/{code}/cancel")
-    public View cancel(@PathVariable String code, @AuthenticationPrincipal Long userId) {
-        return service.cancel(code, userId);
+    public View cancel(@PathVariable String code, @RequestBody(required = false) CancelBookingRequest r, @AuthenticationPrincipal Long userId) {
+        String reason = r != null ? r.reason() : null;
+        return service.cancel(code, reason, userId);
     }
 
     @PostMapping("/{code}/feedback")

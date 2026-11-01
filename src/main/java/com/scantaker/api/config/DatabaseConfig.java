@@ -20,10 +20,10 @@ public class DatabaseConfig {
     @Value("${SPRING_DATASOURCE_URL:${spring.datasource.url:}}")
     private String configuredUrl;
 
-    @Value("${SPRING_DATASOURCE_USERNAME:${spring.datasource.username:}}")
+    @Value("${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:${DB_USERNAME:${spring.datasource.username:}}}}")
     private String configuredUsername;
 
-    @Value("${SPRING_DATASOURCE_PASSWORD:${spring.datasource.password:}}")
+    @Value("${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:${DB_PASSWORD:${SUPABASE_PASSWORD:${spring.datasource.password:}}}}}")
     private String configuredPassword;
 
     @Value("${DATABASE_URL:}")
@@ -47,10 +47,15 @@ public class DatabaseConfig {
         String finalUsername = configuredUsername != null ? configuredUsername.trim() : "";
         String finalPassword = configuredPassword != null ? configuredPassword.trim() : "";
 
-        // 2. Parse postgresql:// or postgres:// URI (Standard for Supabase / Render / Heroku)
-        if (activeUrl.startsWith("postgresql://") || activeUrl.startsWith("postgres://")) {
+        // 2. Normalize and parse URI (handles both postgresql:// and jdbc:postgresql:// with credentials)
+        String urlForParsing = activeUrl;
+        if (urlForParsing.startsWith("jdbc:")) {
+            urlForParsing = urlForParsing.substring("jdbc:".length());
+        }
+
+        if (urlForParsing.startsWith("postgresql://") || urlForParsing.startsWith("postgres://")) {
             try {
-                URI uri = new URI(activeUrl);
+                URI uri = new URI(urlForParsing);
                 String userInfo = uri.getUserInfo();
                 if (userInfo != null && !userInfo.isBlank()) {
                     if (userInfo.contains(":")) {
@@ -58,7 +63,7 @@ public class DatabaseConfig {
                         if (finalUsername.isBlank()) {
                             finalUsername = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
                         }
-                        if (finalPassword.isBlank()) {
+                        if (finalPassword.isBlank() && parts.length > 1 && !parts[1].isBlank()) {
                             finalPassword = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
                         }
                     } else {
@@ -90,13 +95,11 @@ public class DatabaseConfig {
                 }
 
                 finalJdbcUrl = sb.toString();
-                log.info("DatabaseConfig: Parsed cloud PostgreSQL URL for host: {}, user: {}", host, finalUsername);
+                log.info("DatabaseConfig: Successfully parsed PostgreSQL URL for host: {}, user: {}", host, finalUsername);
             } catch (Exception e) {
-                log.warn("DatabaseConfig: Could not parse URI cleanly ({}), prepending jdbc: prefix", e.getMessage());
-                if (activeUrl.startsWith("postgresql://")) {
+                log.warn("DatabaseConfig: Could not parse URI cleanly ({}), using active URL", e.getMessage());
+                if (!activeUrl.startsWith("jdbc:")) {
                     finalJdbcUrl = "jdbc:" + activeUrl;
-                } else if (activeUrl.startsWith("postgres://")) {
-                    finalJdbcUrl = "jdbc:postgresql://" + activeUrl.substring("postgres://".length());
                 }
             }
         }
@@ -109,8 +112,14 @@ public class DatabaseConfig {
             finalPassword = "admin123";
         }
 
-        log.info("DatabaseConfig: Initializing DataSource [URL: {}, User: {}]",
-                finalJdbcUrl.replaceAll(":[^:@]+@", ":****@"), finalUsername);
+        if (finalPassword.isBlank()) {
+            log.error("*****************************************************************************");
+            log.error("DATABASE PASSWORD IS EMPTY! Check Render Environment Variables: DATABASE_URL or DATABASE_PASSWORD");
+            log.error("*****************************************************************************");
+        }
+
+        log.info("DatabaseConfig: Initializing DataSource [URL: {}, User: {}, HasPassword: {}]",
+                finalJdbcUrl.replaceAll(":[^:@]+@", ":****@"), finalUsername, !finalPassword.isBlank());
 
         config.setJdbcUrl(finalJdbcUrl);
         config.setUsername(finalUsername);

@@ -32,13 +32,13 @@ public class User {
 
     private String city = "Jaipur, Rajasthan";
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "boolean default false")
     private boolean googleUser = false;
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "boolean default true")
     private boolean hasPasswordSet = true;
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "boolean default true")
     private boolean mobileVerified = true;
 
     private Instant createdAt = Instant.now();

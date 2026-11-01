@@ -28,4 +28,9 @@ public class SiteController {
             faqRepo.findByActiveTrueOrderBySortOrderAsc().stream().map(FaqView::from).toList(),
             areaRepo.findByActiveTrueOrderBySortOrderAsc().stream().map(AreaView::from).toList());
     }
+
+    @GetMapping("/api/health")
+    public Map<String, Object> health() {
+        return Map.of("status", "UP", "time", java.time.Instant.now().toString());
+    }
 }

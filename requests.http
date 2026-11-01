@@ -1,0 +1,50 @@
+@host = http://localhost:8080
+
+### 1. Public scans (website yahi padhegi)
+GET {{host}}/api/scans
+
+### 2. Admin login
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "identifier": "9999999999", "password": "Admin@12345" }
+
+### 3. Admin: scan ka price badlo
+@token = {{login.response.body.token}}
+PUT {{host}}/api/admin/scans/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "MRI Brain", "type": "MRI", "bodyPart": "Brain", "desc": "Brain, Stroke, Headache", "price": 2599 }
+
+### 4. Booking create (login ke bina)
+POST {{host}}/api/bookings
+Content-Type: application/json
+
+{
+  "scanSlug": "mri-brain", "contrast": "yes", "area": "Vaishali Nagar",
+  "name": "Neha Jain", "mobile": "9876511122", "age": "28", "gender": "Female",
+  "preferredDate": "2026-10-30", "preferredTime": "10:00 AM"
+}
+
+### 5. Admin: bookings dekho
+GET {{host}}/api/admin/bookings?status=pending
+Authorization: Bearer {{token}}
+
+### 6. Admin: centre add
+POST {{host}}/api/admin/centres
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Demo Diagnostic Centre A", "area": "Vaishali Nagar", "address": "Vaishali Nagar, Jaipur", "phone": "9000000001" }
+
+### 7. Admin: booking confirm karo (centre, price, slot)
+PUT {{host}}/api/admin/bookings/SCN-1001
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "confirmed", "centreId": 1, "quotedPrice": 2400, "appointmentDate": "2026-10-30", "appointmentTime": "10:00 AM" }
+
+### 8. Bina token admin API (401 aana chahiye)
+GET {{host}}/api/admin/scans

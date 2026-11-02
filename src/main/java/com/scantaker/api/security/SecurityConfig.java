@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/site").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/bookings/*/prescription").permitAll()
+                        .requestMatchers("/api/notifications/fcm-token").permitAll()
                         .requestMatchers("/api/centre/**").hasAnyRole("CENTRE", "ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/error").permitAll()

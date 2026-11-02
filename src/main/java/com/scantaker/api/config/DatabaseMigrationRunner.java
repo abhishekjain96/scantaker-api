@@ -35,6 +35,21 @@ public class DatabaseMigrationRunner implements ApplicationRunner {
             executeQuietly(stmt, "ALTER TABLE bookings ALTER COLUMN scan_name TYPE character varying(4000)");
             executeQuietly(stmt, "ALTER TABLE bookings ALTER COLUMN notes TYPE character varying(2000)");
 
+            // Safe table creation for device_tokens (Firebase Cloud Messaging push tokens)
+            executeQuietly(stmt, "CREATE TABLE IF NOT EXISTS device_tokens (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "token character varying(512) NOT NULL UNIQUE, " +
+                    "user_id BIGINT, " +
+                    "role character varying(32), " +
+                    "centre_id BIGINT, " +
+                    "user_agent character varying(255), " +
+                    "created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), " +
+                    "updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()" +
+                    ")");
+            executeQuietly(stmt, "CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens(user_id)");
+            executeQuietly(stmt, "CREATE INDEX IF NOT EXISTS idx_device_tokens_role ON device_tokens(role)");
+            executeQuietly(stmt, "CREATE INDEX IF NOT EXISTS idx_device_tokens_centre ON device_tokens(centre_id)");
+
             log.info("Database schema auto-migrations completed successfully!");
         } catch (Exception e) {
             log.error("Database migration runner error: {}", e.getMessage());

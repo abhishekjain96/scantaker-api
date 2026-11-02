@@ -15,16 +15,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationService {
     private final NotificationRepository repo;
+    private final FcmService fcmService;
 
     @Transactional
     public void notifyAdmin(String title, String message, String link) {
         repo.save(new Notification("ADMIN", null, title, message, link));
+        fcmService.sendToRole("ADMIN", title, message, link);
         log.info("[NOTIFICATION] Admin: {} - {}", title, message);
     }
 
     @Transactional
     public void notifyCentre(Long centreId, String title, String message, String link) {
         repo.save(new Notification("CENTRE", centreId, title, message, link));
+        fcmService.sendToCentre(centreId, title, message, link);
         log.info("[NOTIFICATION] Centre {}: {} - {}", centreId, title, message);
     }
 
@@ -32,6 +35,7 @@ public class NotificationService {
     public void notifyUser(Long userId, String title, String message, String link) {
         if (userId == null) return;
         repo.save(new Notification("USER", userId, title, message, link));
+        fcmService.sendToUser(userId, title, message, link);
         log.info("[NOTIFICATION] User {}: {} - {}", userId, title, message);
     }
 
@@ -82,24 +86,30 @@ public class NotificationService {
         String safeMsg = message != null && !message.isBlank() ? message : "Important update from ScanTaker team.";
         String type = targetType != null ? targetType.toUpperCase() : "ALL";
 
+        String finalLink = link != null && !link.isBlank() ? link : "/";
         int count = 0;
         if ("ALL_PATIENTS".equals(type) || "PATIENTS".equals(type)) {
             repo.save(new Notification("USER", null, safeTitle, safeMsg, link != null && !link.isBlank() ? link : "/dashboard/bookings"));
+            fcmService.sendToRole("USER", safeTitle, safeMsg, finalLink);
             count = 1;
         } else if ("ALL_CENTRES".equals(type) || "CENTRES".equals(type)) {
             repo.save(new Notification("CENTRE", null, safeTitle, safeMsg, link != null && !link.isBlank() ? link : "/centre/dashboard"));
+            fcmService.sendToRole("CENTRE", safeTitle, safeMsg, finalLink);
             count = 1;
         } else if ("CENTRE".equals(type) && targetId != null) {
             repo.save(new Notification("CENTRE", targetId, safeTitle, safeMsg, link != null && !link.isBlank() ? link : "/centre/dashboard"));
+            fcmService.sendToCentre(targetId, safeTitle, safeMsg, finalLink);
             count = 1;
         } else if ("USER".equals(type) && targetId != null) {
             repo.save(new Notification("USER", targetId, safeTitle, safeMsg, link != null && !link.isBlank() ? link : "/dashboard/bookings"));
+            fcmService.sendToUser(targetId, safeTitle, safeMsg, finalLink);
             count = 1;
         } else {
             // ALL: notify both centres, users, and admin
             repo.save(new Notification("USER", null, safeTitle, safeMsg, link != null && !link.isBlank() ? link : "/dashboard/bookings"));
             repo.save(new Notification("CENTRE", null, safeTitle, safeMsg, link != null && !link.isBlank() ? link : "/centre/dashboard"));
             repo.save(new Notification("ADMIN", null, safeTitle, safeMsg, link != null && !link.isBlank() ? link : "/admin/bookings"));
+            fcmService.broadcast(safeTitle, safeMsg, finalLink);
             count = 3;
         }
         log.info("[BROADCAST] Target: {}, Title: {}", type, safeTitle);

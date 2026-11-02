@@ -5,6 +5,7 @@ import com.scantaker.api.entity.Notification;
 import com.scantaker.api.entity.Role;
 import com.scantaker.api.entity.User;
 import com.scantaker.api.repository.UserRepository;
+import com.scantaker.api.service.FcmService;
 import com.scantaker.api.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NotificationController {
     private final NotificationService notificationService;
+    private final FcmService fcmService;
     private final UserRepository userRepo;
 
     public record NotificationDto(Long id, String recipientType, String title, String message, String link, boolean read, Instant createdAt) {
@@ -51,6 +53,48 @@ public class NotificationController {
         if (userId == null) throw new ApiException(HttpStatus.UNAUTHORIZED, "Please log in");
         User user = userRepo.findById(userId).orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
         notificationService.markAllAsRead(user);
+        return Map.of("success", true);
+    }
+
+    public record RegisterTokenRequest(
+        String token,
+        String role,
+        Long centreId,
+        String userAgent
+    ) {}
+
+    @PostMapping("/fcm-token")
+    public Map<String, Object> registerFcmToken(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody RegisterTokenRequest req,
+            @RequestHeader(value = "User-Agent", required = false) String userAgentHeader) {
+        if (req == null || req.token() == null || req.token().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Device token is required");
+        }
+        String resolvedRole = req.role();
+        Long resolvedCentreId = req.centreId();
+        if (userId != null) {
+            User user = userRepo.findById(userId).orElse(null);
+            if (user != null) {
+                if (resolvedRole == null || resolvedRole.isBlank()) {
+                    resolvedRole = user.getRole().name();
+                }
+                if (resolvedCentreId == null && user.getCentre() != null) {
+                    resolvedCentreId = user.getCentre().getId();
+                }
+            }
+        }
+        String ua = req.userAgent() != null && !req.userAgent().isBlank() ? req.userAgent() : userAgentHeader;
+        fcmService.registerToken(userId, req.token(), resolvedRole, resolvedCentreId, ua);
+        return Map.of("success", true, "message", "FCM token registered successfully");
+    }
+
+    @DeleteMapping("/fcm-token")
+    public Map<String, Object> unregisterFcmToken(@RequestBody(required = false) Map<String, String> body) {
+        String token = body != null ? body.get("token") : null;
+        if (token != null && !token.isBlank()) {
+            fcmService.unregisterToken(token);
+        }
         return Map.of("success", true);
     }
 

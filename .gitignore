@@ -1,6 +1,8 @@
 HELP.md
 target/
 uploads/
+serviceAccountKey.json
+*.json.key
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

@@ -98,6 +98,13 @@ public class NotificationController {
         return Map.of("success", true);
     }
 
+    @PostMapping("/test-push")
+    public Map<String, Object> testPush(@AuthenticationPrincipal Long userId) {
+        if (userId == null) throw new ApiException(HttpStatus.UNAUTHORIZED, "Please log in");
+        fcmService.sendToUser(userId, "ScanTaker: Booking Alert 🎉", "Hello! Real-time WhatsApp-style push alert is working directly on your device.", "/dashboard/notifications");
+        return Map.of("success", true, "message", "Test push dispatched");
+    }
+
     public record BroadcastRequest(
         String targetType,
         Long targetId,

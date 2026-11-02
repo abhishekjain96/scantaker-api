@@ -22,6 +22,18 @@ public class FcmService {
     private final FirebaseConfig firebaseConfig;
     private final DeviceTokenRepository tokenRepo;
 
+    public boolean isConfigured() {
+        return firebaseConfig.isInitialized();
+    }
+
+    public String getConfigStatus() {
+        return firebaseConfig.getStatus();
+    }
+
+    public long getTokenCount() {
+        return tokenRepo.count();
+    }
+
     @Transactional
     public void registerToken(Long userId, String token, String role, Long centreId, String userAgent) {
         if (token == null || token.isBlank()) return;

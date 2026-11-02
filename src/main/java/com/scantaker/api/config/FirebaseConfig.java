@@ -54,12 +54,38 @@ public class FirebaseConfig {
         return initialized && !FirebaseApp.getApps().isEmpty();
     }
 
+    public String getStatus() {
+        if (!isInitialized()) return "NOT_INITIALIZED";
+        return "ACTIVE (" + FirebaseApp.getInstance().getName() + ")";
+    }
+
     private InputStream resolveCredentialsStream() {
-        // 1. Raw JSON string from environment variable (ideal for Render/Cloud without file upload)
-        String envJson = System.getenv("FIREBASE_SERVICE_ACCOUNT_JSON");
-        if (envJson != null && !envJson.isBlank()) {
-            log.info("[FCM] Loading credentials from FIREBASE_SERVICE_ACCOUNT_JSON environment variable");
-            return new ByteArrayInputStream(envJson.trim().getBytes(StandardCharsets.UTF_8));
+        // 1. Raw JSON string from possible environment variables
+        String[] possibleKeys = {
+            "FIREBASE_SERVICE_ACCOUNT_JSON",
+            "FIREBASE_SERVICE_ACCOUNT",
+            "FIREBASE_CREDENTIALS",
+            "FIREBASE_CREDENTIALS_JSON",
+            "FIREBASE_CONFIG",
+            "FIREBASE_KEY",
+            "GOOGLE_APPLICATION_CREDENTIALS"
+        };
+        for (String key : possibleKeys) {
+            String val = System.getenv(key);
+            if (val != null && !val.isBlank()) {
+                String clean = val.trim();
+                if (clean.startsWith("{") && clean.endsWith("}")) {
+                    log.info("[FCM] Loading credentials from {} environment variable", key);
+                    return new ByteArrayInputStream(clean.getBytes(StandardCharsets.UTF_8));
+                }
+                File f = new File(clean);
+                if (f.exists() && f.isFile()) {
+                    try {
+                        log.info("[FCM] Loading credentials from path in {}: {}", key, clean);
+                        return new FileInputStream(f);
+                    } catch (Exception ignored) {}
+                }
+            }
         }
 
         // 2. Custom path from property/env

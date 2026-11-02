@@ -105,6 +105,15 @@ public class NotificationController {
         return Map.of("success", true, "message", "Test push dispatched");
     }
 
+    @GetMapping("/fcm-status")
+    public Map<String, Object> fcmStatus() {
+        return Map.of(
+            "configured", fcmService.isConfigured(),
+            "status", fcmService.getConfigStatus(),
+            "registeredTokens", fcmService.getTokenCount()
+        );
+    }
+
     public record BroadcastRequest(
         String targetType,
         Long targetId,

@@ -20,6 +20,12 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
 
     List<DeviceToken> findByCentreId(Long centreId);
 
+    @Query("SELECT d FROM DeviceToken d WHERE UPPER(d.role) = UPPER(:role) OR d.userId IN (SELECT u.id FROM User u WHERE u.role = :userRole)")
+    List<DeviceToken> findByRoleOrUserRole(@Param("role") String role, @Param("userRole") com.scantaker.api.entity.Role userRole);
+
+    @Query("SELECT d FROM DeviceToken d WHERE d.centreId = :centreId OR d.userId IN (SELECT u.id FROM User u WHERE u.centre.id = :centreId)")
+    List<DeviceToken> findByCentreIdOrUserCentre(@Param("centreId") Long centreId);
+
     @Modifying
     @Query("DELETE FROM DeviceToken d WHERE d.token = :token")
     void deleteByToken(@Param("token") String token);

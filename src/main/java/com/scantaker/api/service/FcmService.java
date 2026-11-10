@@ -80,14 +80,22 @@ public class FcmService {
     @Async
     public void sendToRole(String role, String title, String body, String link) {
         if (role == null) return;
-        List<DeviceToken> tokens = tokenRepo.findByRole(role.toUpperCase());
+        List<DeviceToken> tokens;
+        try {
+            com.scantaker.api.entity.Role userRole = com.scantaker.api.entity.Role.valueOf(role.toUpperCase());
+            tokens = tokenRepo.findByRoleOrUserRole(role.toUpperCase(), userRole);
+        } catch (Exception e) {
+            tokens = tokenRepo.findByRole(role.toUpperCase());
+        }
+        log.info("[FCM] Dispatching push to role '{}' (found {} recipient devices): {}", role, tokens.size(), title);
         sendToTokens(tokens, title, body, link);
     }
 
     @Async
     public void sendToCentre(Long centreId, String title, String body, String link) {
         if (centreId == null) return;
-        List<DeviceToken> tokens = tokenRepo.findByCentreId(centreId);
+        List<DeviceToken> tokens = tokenRepo.findByCentreIdOrUserCentre(centreId);
+        log.info("[FCM] Dispatching push to centreId {} (found {} recipient devices): {}", centreId, tokens.size(), title);
         sendToTokens(tokens, title, body, link);
     }
 

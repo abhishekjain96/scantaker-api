@@ -84,6 +84,9 @@ public class NotificationController {
                 }
             }
         }
+        if (resolvedRole == null || resolvedRole.isBlank()) {
+            resolvedRole = "USER";
+        }
         String ua = req.userAgent() != null && !req.userAgent().isBlank() ? req.userAgent() : userAgentHeader;
         fcmService.registerToken(userId, req.token(), resolvedRole, resolvedCentreId, ua);
         return Map.of("success", true, "message", "FCM token registered successfully");
@@ -101,8 +104,16 @@ public class NotificationController {
     @PostMapping("/test-push")
     public Map<String, Object> testPush(@AuthenticationPrincipal Long userId) {
         if (userId == null) throw new ApiException(HttpStatus.UNAUTHORIZED, "Please log in");
-        fcmService.sendToUser(userId, "ScanTaker: Booking Alert 🎉", "Hello! Real-time WhatsApp-style push alert is working directly on your device.", "/dashboard/notifications");
-        return Map.of("success", true, "message", "Test push dispatched");
+        User user = userRepo.findById(userId).orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
+        String title = "ScanTaker: Real-time Alert 🔔";
+        String body = "Ding! Push alert & chime audio tested successfully on your device.";
+        String link = user.getRole() == Role.ADMIN ? "/admin/bookings" : (user.getRole() == Role.CENTRE ? "/centre/dashboard" : "/dashboard/bookings");
+        
+        fcmService.sendToUser(userId, title, body, link);
+        if (user.getRole() == Role.ADMIN) {
+            fcmService.sendToRole("ADMIN", title, body, link);
+        }
+        return Map.of("success", true, "message", "Test push dispatched to your device");
     }
 
     @GetMapping("/fcm-status")

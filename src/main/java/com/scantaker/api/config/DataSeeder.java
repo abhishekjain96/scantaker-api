@@ -138,7 +138,21 @@ public class DataSeeder implements CommandLineRunner {
                     int order = item.get("order") != null ? ((Number) item.get("order")).intValue() : 100;
 
                     Optional<Scan> existing = scans.findBySlug(slug);
-                    Scan s = existing.orElseGet(Scan::new);
+                    if (existing.isPresent()) {
+                        Scan s = existing.get();
+                        boolean changed = false;
+                        if (s.getCode() == null || s.getCode().isBlank()) {
+                            s.setCode(code);
+                            changed = true;
+                        }
+                        if (s.getCategory() == null || s.getCategory().isBlank()) {
+                            s.setCategory(category != null ? category : "General Scans");
+                            changed = true;
+                        }
+                        if (changed) scans.save(s);
+                        continue;
+                    }
+                    Scan s = new Scan();
                     s.setSlug(slug);
                     s.setCode(code);
                     s.setName(name);

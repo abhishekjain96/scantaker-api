@@ -90,6 +90,7 @@ public class BookingService {
         b.setPreferredTime(r.preferredTime());
         bookings.save(b);
         b.setCode("SCN-" + (1000 + b.getId()));
+        bookings.save(b);
         notifications.notifyAdmin("New Booking Request 🩻", b.getPatientName() + " (" + b.getMobile() + ") requested " + b.getScanName() + " (" + b.getCode() + ")", "/admin/bookings");
         if (userId != null) {
             notifications.notifyUser(userId, "Scan Request Received ✓", "Your request #" + b.getCode() + " for " + b.getScanName() + " is received. Centre details will be shared shortly.", "/dashboard/bookings/" + b.getCode());
@@ -188,6 +189,7 @@ public class BookingService {
         b.setPrescriptionFile(storage.save(file));
         String n = file.getOriginalFilename() == null ? "prescription" : file.getOriginalFilename();
         b.setPrescriptionName(n.replaceAll("[^A-Za-z0-9._-]", "_"));
+        bookings.save(b);
         return View.from(b);
     }
 
@@ -213,6 +215,7 @@ public class BookingService {
             notifications.notifyUser(b.getUser().getId(), "Scan Report Ready! 📄", "Your verified report for " + b.getScanName() + " (" + b.getCode() + ") is ready to download.", "/dashboard/reports");
         }
         notifications.notifyAdmin("Scan Report Uploaded ✓", (b.getCentre() != null ? b.getCentre().getName() : "Diagnostic Centre") + " uploaded report for " + b.getPatientName() + " (" + b.getCode() + ")", "/admin/bookings");
+        bookings.save(b);
         return View.from(b);
     }
 
@@ -299,18 +302,20 @@ public class BookingService {
                     "Your scan slot is scheduled for " + b.getAppointmentDate() + " at " + (b.getAppointmentTime() != null ? b.getAppointmentTime() : "") + " with " + (b.getCentre() != null ? b.getCentre().getName() : "diagnostic centre"),
                     "/dashboard/bookings/" + (b.getCode() != null ? b.getCode() : b.getId()));
         }
+        bookings.save(b);
         return View.from(b);
     }
 
     @Transactional
     public View submitFeedback(String code, Integer rating, String feedbackText, Long userId) {
-        Booking b = findBooking(code);
+        Booking b = owned(code, userId);
         if (rating != null && (rating < 1 || rating > 5)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Rating must be between 1 and 5");
         }
         b.setRating(rating != null ? rating : 5);
         b.setFeedback(feedbackText != null ? feedbackText.trim() : "");
         b.setFeedbackAt(Instant.now());
+        bookings.save(b);
 
         String centreName = b.getCentre() != null ? b.getCentre().getName() : "Diagnostic Centre";
         String commentSnippet = b.getFeedback().length() > 60 ? b.getFeedback().substring(0, 60) + "..." : b.getFeedback();
@@ -379,6 +384,7 @@ public class BookingService {
         } else {
             b.setStatus(BookingStatus.CONFIRMED);
         }
+        bookings.save(b);
         return View.from(b);
     }
 

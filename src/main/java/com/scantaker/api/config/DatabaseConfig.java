@@ -29,6 +29,9 @@ public class DatabaseConfig {
     @Value("${DATABASE_URL:}")
     private String databaseUrl;
 
+    @Value("${spring.datasource.driver-class-name:}")
+    private String configuredDriverClassName;
+
     @Bean
     @Primary
     public DataSource dataSource() {
@@ -112,7 +115,7 @@ public class DatabaseConfig {
             finalPassword = "admin123";
         }
 
-        if (finalPassword.isBlank()) {
+        if (finalPassword.isBlank() && !finalJdbcUrl.startsWith("jdbc:h2:")) {
             log.error("*****************************************************************************");
             log.error("DATABASE PASSWORD IS EMPTY! Check Render Environment Variables: DATABASE_URL or DATABASE_PASSWORD");
             log.error("*****************************************************************************");
@@ -124,7 +127,14 @@ public class DatabaseConfig {
         config.setJdbcUrl(finalJdbcUrl);
         config.setUsername(finalUsername);
         config.setPassword(finalPassword);
-        config.setDriverClassName("org.postgresql.Driver");
+
+        String driverClass = "org.postgresql.Driver";
+        if (configuredDriverClassName != null && !configuredDriverClassName.isBlank()) {
+            driverClass = configuredDriverClassName.trim();
+        } else if (finalJdbcUrl.startsWith("jdbc:h2:")) {
+            driverClass = "org.h2.Driver";
+        }
+        config.setDriverClassName(driverClass);
 
         // Optimal pool configuration for Render free tier (512MB RAM) and Supabase pooler
         config.setMaximumPoolSize(5);

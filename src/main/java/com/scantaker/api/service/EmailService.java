@@ -1,5 +1,6 @@
 package com.scantaker.api.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -81,23 +84,16 @@ public class EmailService {
         return true;
     }
 
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private boolean sendViaBrevoApi(String toEmail, String subject, String htmlContent) {
         try {
-            // Escape json characters in htmlContent
-            String escapedHtml = htmlContent
-                    .replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\r", "")
-                    .replace("\n", "\\n");
-
-            String payload = String.format("""
-                {
-                    "sender": {"name": "%s", "email": "%s"},
-                    "to": [{"email": "%s"}],
-                    "subject": "%s",
-                    "htmlContent": "%s"
-                }
-                """, fromName, fromEmail, toEmail, subject, escapedHtml);
+            String payload = JSON.writeValueAsString(Map.of(
+                    "sender", Map.of("name", fromName, "email", fromEmail),
+                    "to", List.of(Map.of("email", toEmail)),
+                    "subject", subject,
+                    "htmlContent", htmlContent
+            ));
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
